@@ -681,9 +681,25 @@ func getRelyingPartyArgs(cfg *config.Config, provider string, log log.Logger) (
 		rp.WithVerifierOpts(rp.WithIssuedAtOffset(issuedAtOffset)),
 	}
 
-	key := securecookie.GenerateRandomKey(32) //nolint: gomnd
+	var hashKey []byte
 
-	cookieHandler := httphelper.NewCookieHandler(key, key, httphelper.WithMaxAge(relyingPartyCookieMaxAge))
+	var blockKey []byte
+
+	envHashKey := os.Getenv("COOKIE_HASH_KEY")
+	if envHashKey != "" {
+		hashKey = []byte(envHashKey)
+	} else {
+		hashKey = securecookie.GenerateRandomKey(64) //nolint: gomnd
+	}
+
+	envBlockKey := os.Getenv("COOKIE_BLOCK_KEY")
+	if envBlockKey != "" {
+		blockKey = []byte(envBlockKey)
+	} else {
+		blockKey = nil
+	}
+
+	cookieHandler := httphelper.NewCookieHandler(hashKey, blockKey, httphelper.WithMaxAge(relyingPartyCookieMaxAge))
 	options = append(options, rp.WithCookieHandler(cookieHandler))
 
 	if clientSecret == "" {
