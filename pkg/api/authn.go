@@ -688,13 +688,16 @@ func getRelyingPartyArgs(cfg *config.Config, provider string, log log.Logger) (
 	envHashKey := os.Getenv("COOKIE_HASH_KEY")
 	if envHashKey != "" {
 		hashKey = []byte(envHashKey)
+		log.Info().Msg("Using hash key from env")
 	} else {
 		hashKey = securecookie.GenerateRandomKey(64) //nolint: gomnd
+		log.Warn().Msg("Using random hash key")
 	}
 
 	envBlockKey := os.Getenv("COOKIE_BLOCK_KEY")
 	if envBlockKey != "" {
 		blockKey = []byte(envBlockKey)
+		log.Info().Msg("Using block key from env")
 	} else {
 		blockKey = nil
 	}
@@ -848,7 +851,10 @@ func saveUserLoggedSession(cookieStore sessions.Store, response http.ResponseWri
 func OAuth2Callback(ctlr *Controller, w http.ResponseWriter, r *http.Request, state, email string,
 	groups []string,
 ) (string, error) {
-	stateCookie, _ := ctlr.CookieStore.Get(r, "statecookie")
+	stateCookie, err := ctlr.CookieStore.Get(r, "statecookie")
+	if err != nil {
+		ctlr.Log.Error().Err(err).Str("component", "openID").Msg("failed to get 'statecookie' from request")
+	}
 
 	stateOrigin, ok := stateCookie.Values["state"].(string)
 	if !ok {
